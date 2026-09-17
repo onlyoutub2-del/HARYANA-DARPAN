@@ -1,0 +1,85 @@
+name: Update sitemap automatically
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "30 4 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sitemap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate sitemap from all HTML pages
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from datetime import datetime, timezone
+          from xml.sax.saxutils import escape
+
+          base = "https://onlyoutub2-del.github.io/desivlogindia"
+          urls = []
+
+          # Include root/site pages.
+          for p in sorted(Path('.').glob('*.html')):
+              if p.name.startswith('.'):
+                  continue
+              urls.append((f"{base}/{p.name}" if p.name != 'index.html' else base + '/', p))
+
+          # Include every blog HTML file automatically.
+          for p in sorted(Path('blogs').glob('*.html')):
+              urls.append((f"{base}/blogs/{p.name}", p))
+
+          # Include other explicitly maintained HTML pages under blog/ if present.
+          blog_dir = Path('blog')
+          if blog_dir.exists():
+              for p in sorted(blog_dir.rglob('*.html')):
+                  rel = p.as_posix()
+                  urls.append((f"{base}/{rel}", p))
+
+          # Deduplicate URLs while preserving order.
+          seen = set()
+          unique = []
+          for url, path in urls:
+              if url not in seen:
+                  seen.add(url)
+                  unique.append((url, path))
+
+          now = datetime.now(timezone.utc).date().isoformat()
+          lines = [
+              '<?xml version="1.0" encoding="UTF-8"?>',
+              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+          ]
+
+          for url, path in unique:
+              try:
+                  lastmod = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).date().isoformat()
+              except OSError:
+                  lastmod = now
+              lines += [
+                  '  <url>',
+                  f'    <loc>{escape(url)}</loc>',
+                  f'    <lastmod>{lastmod}</lastmod>',
+                  '  </url>'
+              ]
+
+          lines.append('</urlset>')
+          Path('sitemap.xml').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          print(f"Generated sitemap.xml with {len(unique)} URLs")
+          PY
+
+      - name: Commit sitemap if changed
+        run: |
+          git config user.name "desivlogindia-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add sitemap.xml
+          git diff --cached --quiet || git commit -m "Automatically update sitemap"
+          git push
