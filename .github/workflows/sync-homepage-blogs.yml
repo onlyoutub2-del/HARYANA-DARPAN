@@ -2,6 +2,11 @@ name: Sync Blogs to Homepage
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/sync-homepage-blogs.yml"
+      - "blogs/**"
+      - "index.html"
   schedule:
     - cron: "15 5 * * *"
 
@@ -44,10 +49,21 @@ jobs:
 
           section = '<!-- AUTO_BLOGS_START --><section id="blogs"><div class="container"><div class="section-head"><div><h2>Latest Blogs</h2><p>Fresh posts from Desi Vlog India.</p></div></div><div class="grid">' + ''.join(cards) + '</div></div></section><!-- AUTO_BLOGS_END -->'
 
-          content = re.sub(r'<!-- AUTO_BLOGS_START -->.*?<!-- AUTO_BLOGS_END -->', '', content, flags=re.S)
-          content = content.replace('</main>', section + '\n</main>', 1)
+          # Remove every previously generated/duplicated Latest Blogs section.
+          content = re.sub(r'<!-- AUTO_BLOGS_START -->.*?<!-- AUTO_BLOGS_END -->', '', content, flags=re.S | re.I)
+          content = re.sub(r'<section\s+id=["\']blogs["\'][\s\S]*?</section>', '', content, flags=re.S | re.I)
+          content = re.sub(r'<section\s+id=["\']blogs["\'][^>]*>.*?</section>', '', content, flags=re.S | re.I)
+
+          # Remove any old unmarked automated cards if present.
+          content = re.sub(r'<article\s+class=["\']card automated-blog["\'][\s\S]*?</article>', '', content, flags=re.S | re.I)
+
+          if '</main>' in content:
+              content = content.replace('</main>', section + '\n</main>', 1)
+          else:
+              content += '\n' + section
+
           index.write_text(content, encoding="utf-8")
-          print(f"Synced {len(blogs)} blogs to homepage")
+          print(f"Synced {len(blogs)} unique blogs to homepage")
           PY
 
       - name: Commit homepage
@@ -56,5 +72,5 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add index.html
           git diff --cached --quiet && echo "Homepage already up to date." && exit 0
-          git commit -m "Sync latest blogs to homepage"
+          git commit -m "Remove duplicate blogs from homepage"
           git push origin main
