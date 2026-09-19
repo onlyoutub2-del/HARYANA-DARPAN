@@ -49,18 +49,9 @@ jobs:
 
           section = '<!-- AUTO_BLOGS_START --><section id="blogs"><div class="container"><div class="section-head"><div><h2>Latest Blogs</h2><p>Fresh posts from Desi Vlog India.</p></div></div><div class="grid">' + ''.join(cards) + '</div></div></section><!-- AUTO_BLOGS_END -->'
 
-          # Remove every previously generated/duplicated Latest Blogs section.
-          content = re.sub(r'<!-- AUTO_BLOGS_START -->.*?<!-- AUTO_BLOGS_END -->', '', content, flags=re.S | re.I)
-          content = re.sub(r'<section\s+id=["\']blogs["\'][\s\S]*?</section>', '', content, flags=re.S | re.I)
-          content = re.sub(r'<section\s+id=["\']blogs["\'][^>]*>.*?</section>', '', content, flags=re.S | re.I)
-
-          # Remove any old unmarked automated cards if present.
-          content = re.sub(r'<article\s+class=["\']card automated-blog["\'][\s\S]*?</article>', '', content, flags=re.S | re.I)
-
-          if '</main>' in content:
-              content = content.replace('</main>', section + '\n</main>', 1)
-          else:
-              content += '\n' + section
+          # Replace only the dedicated automation slot; never delete the main homepage sections.
+          section = '<!-- AUTO_BLOGS_START --><section class="section" id="auto-latest"><div class="container"><div class="section-head"><div><h2>Latest Published Blogs</h2><p>नई posts automatically यहाँ दिखाई देंगी।</p></div><a class="btn secondary" href="blogs.html">View All →</a></div><div class="grid">' + ''.join(cards) + '</div></div></section><!-- AUTO_BLOGS_END -->'
+          content = re.sub(r'<!-- AUTO_BLOGS_START -->.*?<!-- AUTO_BLOGS_END -->', section, content, flags=re.S | re.I)
 
           index.write_text(content, encoding="utf-8")
           print(f"Synced {len(blogs)} unique blogs to homepage")
