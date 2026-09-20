@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://onlyoutub2-del.github.io/desivlogindia/sitemap.xml
+Sitemap: https://onlyoutub2-del.github.io/haryana-darpan/sitemap.xml
