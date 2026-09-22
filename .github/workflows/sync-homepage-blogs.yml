@@ -40,7 +40,7 @@ jobs:
               title = html.unescape(title)
               blogs.append((path.stat().st_mtime, path.name, title))
 
-          blogs.sort(reverse=True)
+          blogs.sort(key=lambda x: (x[0], x[1]), reverse=True)
           blogs = blogs[:6]
 
           cards = []
